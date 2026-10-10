@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Campus Break Activity Picker</title>
+<style>
+  :root { --bg:#f5f6f8; --card:#ffffff; --ink:#1c1e21; --muted:#5a6472; --line:#d8dde5; --accent:#2563eb; --accent-ink:#ffffff; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:16px; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC", sans-serif; background:var(--bg); color:var(--ink); line-height:1.5; }
+  .wrap { max-width:640px; margin:0 auto; }
+  h1 { font-size:1.25rem; margin:0 0 4px; }
+  .note { font-size:.8rem; color:var(--muted); margin:0 0 16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:14px; }
+  .row { margin-bottom:12px; }
+  .row:last-child { margin-bottom:0; }
+  label.field { display:block; font-size:.85rem; font-weight:600; margin-bottom:6px; }
+  select, button { font:inherit; }
+  select { width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+  .btns { display:flex; flex-wrap:wrap; gap:8px; }
+  button { padding:11px 16px; border-radius:8px; border:1px solid var(--line); background:#fff; cursor:pointer; min-height:44px; }
+  button.primary { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); font-weight:600; }
+  button:active { transform:translateY(1px); }
+  .result { text-align:center; }
+  .result .id { font-size:.8rem; color:var(--muted); letter-spacing:.05em; }
+  .result .name { font-size:1.35rem; font-weight:700; margin:4px 0 10px; }
+  .result .meta { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; }
+  .chip { font-size:.8rem; background:var(--bg); border:1px solid var(--line); border-radius:999px; padding:3px 10px; color:var(--muted); }
+  .empty { color:var(--muted); font-style:italic; }
+  h2 { font-size:.95rem; margin:0 0 10px; }
+  ol.history { list-style:none; margin:0; padding:0; }
+  ol.history li { padding:8px 0; border-bottom:1px dashed var(--line); font-size:.9rem; }
+  ol.history li:last-child { border-bottom:none; }
+  ol.history .hid { color:var(--muted); font-size:.78rem; margin-right:6px; }
+  .topbar { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:4px; }
+  .lang { flex-shrink:0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div>
+      <h1 id="t-title">What can I do between classes?</h1>
+      <p class="note" id="t-note">Fictional teaching activities; not an official university announcement.</p>
+    </div>
+    <button class="lang" id="langBtn" type="button">中文</button>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <label class="field" id="t-loc" for="loc">Location</label>
+      <select id="loc">
+        <option value="all" id="o-loc-all">All locations</option>
+        <option value="indoor" id="o-loc-in">Indoor</option>
+        <option value="outdoor" id="o-loc-out">Outdoor</option>
+      </select>
+    </div>
+    <div class="row">
+      <label class="field" id="t-time" for="time">Available time</label>
+      <select id="time">
+        <option value="15">15 minutes</option>
+        <option value="30" selected>30 minutes</option>
+        <option value="60">60 minutes</option>
+      </select>
+    </div>
+    <div class="row">
+      <label class="field" id="t-energy" for="energy">Energy</label>
+      <select id="energy">
+        <option value="all" id="o-en-all">All energy levels</option>
+        <option value="low" id="o-en-low">Low</option>
+        <option value="medium" id="o-en-med">Medium</option>
+      </select>
+    </div>
+    <div class="btns">
+      <button class="primary" id="pickBtn" type="button">Pick an activity</button>
+      <button id="resetBtn" type="button">Reset filters</button>
+    </div>
+  </div>
+
+  <div class="card result" id="resultCard">
+    <div class="empty" id="t-ready">Press “Pick an activity” to start.</div>
+  </div>
+
+  <div class="card">
+    <h2 id="t-history">Recent picks (most recent first)</h2>
+    <ol class="history" id="historyList"></ol>
+    <div class="btns" style="margin-top:10px;">
+      <button id="clearBtn" type="button">Clear history</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* Data copied from practice/02-campus-picker/activities.json. Do not edit the JSON file. */
+const ACTIVITIES = [
+  { id:"A01", name_zh:"整理書包", name_en:"Organize your bag", location_type:"indoor", minutes:10, energy:"low" },
+  { id:"A02", name_zh:"畫一張小卡", name_en:"Draw a small card", location_type:"indoor", minutes:15, energy:"low" },
+  { id:"A03", name_zh:"寫三條讀書筆記", name_en:"Write three study notes", location_type:"indoor", minutes:10, energy:"low" },
+  { id:"A04", name_zh:"安靜讀兩頁書", name_en:"Read two pages quietly", location_type:"indoor", minutes:15, energy:"low" },
+  { id:"A05", name_zh:"排好明日待辦", name_en:"Plan tomorrow’s tasks", location_type:"indoor", minutes:20, energy:"low" },
+  { id:"A06", name_zh:"整理本機練習檔", name_en:"Organize practice files", location_type:"indoor", minutes:30, energy:"medium" },
+  { id:"A07", name_zh:"在合適位置慢走", name_en:"Take a gentle walk in a suitable area", location_type:"outdoor", minutes:15, energy:"low" },
+  { id:"A08", name_zh:"觀察天空並畫草圖", name_en:"Observe the sky and sketch", location_type:"outdoor", minutes:20, energy:"low" },
+  { id:"A09", name_zh:"在合適位置快走", name_en:"Take a brisk walk in a suitable area", location_type:"outdoor", minutes:30, energy:"medium" },
+  { id:"A10", name_zh:"規劃小組練習", name_en:"Plan a group exercise", location_type:"indoor", minutes:45, energy:"medium" },
+  { id:"A11", name_zh:"記錄自然色彩", name_en:"Record colors in nature", location_type:"outdoor", minutes:45, energy:"low" },
+  { id:"A12", name_zh:"構思下一次社團活動", name_en:"Brainstorm a future club activity", location_type:"indoor", minutes:60, energy:"medium" }
+];
+
+const STRINGS = {
+  en: {
+    title:"What can I do between classes?",
+    note:"Fictional teaching activities; not an official university announcement.",
+    loc:"Location", locAll:"All locations", locIn:"Indoor", locOut:"Outdoor",
+    time:"Available time", time15:"15 minutes", time30:"30 minutes", time60:"60 minutes",
+    energy:"Energy", enAll:"All energy levels", enLow:"Low", enMed:"Medium",
+    pick:"Pick an activity", reset:"Reset filters", ready:"Press “Pick an activity” to start.",
+    history:"Recent picks (most recent first)", clear:"Clear history",
+    noMatch:"No matching activities.",
+    metaMin:"min", metaLocIn:"Indoor", metaLocOut:"Outdoor", metaEnLow:"Low energy", metaEnMed:"Medium energy",
+    langBtn:"中文"
+  },
+  zh: {
+    title:"下課空檔可以做什麼？",
+    note:"虛構教學活動；非學校正式公告。",
+    loc:"地點", locAll:"所有地點", locIn:"室內", locOut:"戶外",
+    time:"可用時間", time15:"15 分鐘", time30:"30 分鐘", time60:"60 分鐘",
+    energy:"能量", enAll:"所有能量", enLow:"低", enMed:"中",
+    pick:"抽一個活動", reset:"重設篩選", ready:"按「抽一個活動」開始。",
+    history:"最近抽到的活動（最新在前）", clear:"清除紀錄",
+    noMatch:"沒有符合條件的活動。",
+    metaMin:"分鐘", metaLocIn:"室內", metaLocOut:"戶外", metaEnLow:"低能量", metaEnMed:"中能量",
+    langBtn:"English"
+  }
+};
+
+let lang = "en";
+let history = [];
+
+const $ = (id) => document.getElementById(id);
+
+function applyStrings() {
+  const s = STRINGS[lang];
+  $("t-title").textContent = s.title;
+  $("t-note").textContent = s.note;
+  $("t-loc").textContent = s.loc;
+  $("o-loc-all").textContent = s.locAll;
+  $("o-loc-in").textContent = s.locIn;
+  $("o-loc-out").textContent = s.locOut;
+  $("t-time").textContent = s.time;
+  document.querySelector('#time option[value="15"]').textContent = s.time15;
+  document.querySelector('#time option[value="30"]').textContent = s.time30;
+  document.querySelector('#time option[value="60"]').textContent = s.time60;
+  $("t-energy").textContent = s.energy;
+  $("o-en-all").textContent = s.enAll;
+  $("o-en-low").textContent = s.enLow;
+  $("o-en-med").textContent = s.enMed;
+  $("pickBtn").textContent = s.pick;
+  $("resetBtn").textContent = s.reset;
+  $("t-history").textContent = s.history;
+  $("clearBtn").textContent = s.clear;
+  $("langBtn").textContent = s.langBtn;
+  const readyEl = $("t-ready");
+  if (readyEl) readyEl.textContent = s.ready;
+  renderHistory();
+}
+
+function nameOf(a) { return lang === "zh" ? a.name_zh : a.name_en; }
+function locLabel(v) { return v === "indoor" ? STRINGS[lang].metaLocIn : STRINGS[lang].metaLocOut; }
+function energyLabel(v) { return v === "low" ? STRINGS[lang].metaEnLow : STRINGS[lang].metaEnMed; }
+
+function currentFilters() {
+  return {
+    loc: $("loc").value,
+    time: parseInt($("time").value, 10),
+    energy: $("energy").value
+  };
+}
+
+function matching(f) {
+  return ACTIVITIES.filter(a =>
+    (f.loc === "all" || a.location_type === f.loc) &&
+    (a.minutes <= f.time) &&
+    (f.energy === "all" || a.energy === f.energy)
+  );
+}
+
+function renderResult(a) {
+  const card = $("resultCard");
+  if (!a) {
+    card.innerHTML = '<div class="empty">' + STRINGS[lang].noMatch + '</div>';
+    return;
+  }
+  card.innerHTML =
+    '<div class="id">' + a.id + '</div>' +
+    '<div class="name">' + nameOf(a) + '</div>' +
+    '<div class="meta">' +
+      '<span class="chip">' + a.minutes + ' ' + STRINGS[lang].metaMin + '</span>' +
+      '<span class="chip">' + locLabel(a.location_type) + '</span>' +
+      '<span class="chip">' + energyLabel(a.energy) + '</span>' +
+    '</div>';
+}
+
+function renderHistory() {
+  const ol = $("historyList");
+  ol.innerHTML = "";
+  history.forEach(a => {
+    const li = document.createElement("li");
+    li.innerHTML = '<span class="hid">' + a.id + '</span>' + nameOf(a);
+    ol.appendChild(li);
+  });
+}
+
+$("pickBtn").addEventListener("click", () => {
+  const f = currentFilters();
+  const pool = matching(f);
+  if (pool.length === 0) {
+    renderResult(null);
+    return;
+  }
+  const a = pool[Math.floor(Math.random() * pool.length)];
+  renderResult(a);
+  history.unshift(a);
+  if (history.length > 5) history = history.slice(0, 5);
+  renderHistory();
+});
+
+$("resetBtn").addEventListener("click", () => {
+  $("loc").value = "all";
+  $("time").value = "30";
+  $("energy").value = "all";
+});
+
+$("clearBtn").addEventListener("click", () => {
+  history = [];
+  renderHistory();
+});
+
+$("langBtn").addEventListener("click", () => {
+  lang = lang === "en" ? "zh" : "en";
+  applyStrings();
+  const shown = $("resultCard").querySelector(".id");
+  if (shown) {
+    const id = shown.textContent;
+    const a = ACTIVITIES.find(x => x.id === id);
+    if (a) renderResult(a);
+  }
+});
+
+applyStrings();
+</script>
+</body>
+</html>
